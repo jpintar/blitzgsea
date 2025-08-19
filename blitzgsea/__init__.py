@@ -101,8 +101,9 @@ def enrichment_score(abs_signature, signature_map, gene_set):
     es = running_sum[nn]
     return running_sum, es
 
-def enrichment_score_null(abs_signature, hit_indicator, number_hits):
-    hits = np.random.choice(len(abs_signature), size=number_hits, replace=False)
+def enrichment_score_null(abs_signature, hit_indicator, number_hits, seed):
+    rng = np.random.default_rng(seed)
+    hits = rng.choice(len(abs_signature), size=number_hits, replace=False)
     hit_indicator_new = np.zeros(len(abs_signature), dtype=np.float32)
     hit_indicator_new[hits] = 1
     number_miss = len(abs_signature) - number_hits
@@ -141,7 +142,7 @@ def get_peak_size_adv_old(abs_signature, number_hits, permutations, seed):
     hit_indicator = np.zeros(len(abs_signature))
     hit_indicator[0:number_hits] = 1
     for i in range(permutations):
-        es.append(enrichment_score_null(abs_signature, hit_indicator, number_hits))
+        es.append(enrichment_score_null(abs_signature, hit_indicator, number_hits, seed))
     return es
 
 def get_peak_size_adv(abs_signature, number_hits, permutations, seed):
@@ -150,7 +151,7 @@ def get_peak_size_adv(abs_signature, number_hits, permutations, seed):
     hit_indicator = np.zeros(len(abs_signature))
     hit_indicator[0:number_hits] = 1
     for i in range(permutations):
-        es_val = enrichment_score_null(abs_signature, hit_indicator.copy(), number_hits)
+        es_val = enrichment_score_null(abs_signature, hit_indicator.copy(), number_hits, seed)
         if np.isnan(es_val):
             continue  # Skip invalid permutations
         es.append(es_val)
@@ -212,7 +213,8 @@ def estimate_parameters(signature, abs_signature, signature_map, library, permut
     f_beta_neg = loess_interpolation(anchor_set_sizes, beta_neg, frac=0.15)
 
     # fix issue with numeric instability
-    pos_ratio = pos_ratio - np.abs(0.0001*np.random.randn(len(pos_ratio)))
+    rng = np.random.default_rng(seed)
+    pos_ratio = pos_ratio - np.abs(0.0001*rng.standard_normal(len(pos_ratio)))
     f_pos_ratio = loess_interpolation(anchor_set_sizes, pos_ratio, frac=0.5)
     
     if plotting:
@@ -317,12 +319,12 @@ def gsea(signature, library, permutations: int=1000, anchors: int=40, min_size: 
         symmetric = True
     
     random.seed(seed)
-    np.random.seed(seed)
+    rng = np.random.default_rng(seed)
     sig_hash = hash(signature.to_string())
 
     # optionally noise can be added as a fraction of the expression values
     if add_noise:
-        signature.iloc[:,1] = signature.iloc[:,1] + np.random.normal(signature.shape[0])/(np.mean(np.abs(signature.iloc[:,1]))*100000)
+        signature.iloc[:,1] = signature.iloc[:,1] + rng.normal(size=signature.shape[0])/(np.mean(np.abs(signature.iloc[:,1]))*100000)
     signature = signature.sort_values("v", ascending=False).set_index("i")
     signature = signature[~signature.index.duplicated(keep='first')]
     library = {key: set(value) for key, value in library.items()}
