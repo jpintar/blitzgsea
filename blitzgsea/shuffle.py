@@ -7,12 +7,12 @@ def gsea(exprs, library, groups, permutations=1000, seed=1):
     pos = 0
     neg = 1
 
-    rs = np.random.RandomState(seed)
+    rng = np.random.default_rng(seed)
     expr_mat = exprs.T
     perm_cor_tensor = np.tile(expr_mat, (permutations,1,1))
 
     perm_cor_tensor.shape
-    for arr in perm_cor_tensor[:-1]: rs.shuffle(arr)
+    for arr in perm_cor_tensor[:-1]: rng.shuffle(arr)
 
     groups = np.array(groups)
     pos = groups == pos
